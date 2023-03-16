@@ -41,7 +41,7 @@ contract Lottery{
         require(address(this).balance != 0, "already draw"); //만약 당첨자가 나와서 돈을 다 나눠가진 상태라면 이 이 컨트랙트에는 돈이 없을 것 -> 이미 draw와 claim을 했다고 생각
     }
 
-    function winningNumber() public returns(uint16) { // 당첨 번호 -> 1로 고정해줌
+    function winningNumber() public pure returns(uint16) { // 당첨 번호 -> 1로 고정해줌
         return 1;
     }
 }
