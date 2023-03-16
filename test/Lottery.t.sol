@@ -8,7 +8,7 @@ contract LotteryTest is Test {
     Lottery public lottery;
     uint256 received_msg_value;
     function setUp() public {
-       lottery = new Lottery();
+       lottery = new Lottery(); //new -> contract 배포
        received_msg_value = 0;
        vm.deal(address(this), 100 ether);
        vm.deal(address(1), 100 ether);
@@ -21,7 +21,7 @@ contract LotteryTest is Test {
     }
 
     function testInsufficientFunds1() public {
-        vm.expectRevert();
+        vm.expectRevert(); //아래 있는 명령어가 실패해야 revert
         lottery.buy(0);
     }
 
@@ -41,16 +41,16 @@ contract LotteryTest is Test {
         lottery.buy{value: 0.1 ether}(0);
     }
 
-    function testSellPhaseFullLength() public {
+    function testSellPhaseFullLength() public { //파는 것 -> 하루
         lottery.buy{value: 0.1 ether}(0);
         vm.warp(block.timestamp + 24 hours - 1);
-        vm.prank(address(1));
+        vm.prank(address(1)); //사용자를 address(1)로 바꿈
         lottery.buy{value: 0.1 ether}(0);
     }
 
-    function testNoBuyAfterPhaseEnd() public {
+    function testNoBuyAfterPhaseEnd() public { //시간초과
         lottery.buy{value: 0.1 ether}(0);
-        vm.warp(block.timestamp + 24 hours);
+        vm.warp(block.timestamp + 24 hours); // time+24hours 후에 실행되게끔
         vm.expectRevert();
         vm.prank(address(1));
         lottery.buy{value: 0.1 ether}(0);
@@ -88,16 +88,20 @@ contract LotteryTest is Test {
 
     function testClaimOnWin() public {
         uint16 winningNumber = getNextWinningNumber();
-        lottery.buy{value: 0.1 ether}(winningNumber); vm.warp(block.timestamp + 24 hours);
-        uint256 expectedPayout = address(lottery).balance;
+        lottery.buy{value: 0.1 ether}(winningNumber); 
+        vm.warp(block.timestamp + 24 hours);
+        uint256 expectedPayout = address(lottery).balance; //당첨금
         lottery.draw();
-        lottery.claim();
+        lottery.claim(); //당첨된 사람한테 돈 주는 거
+        console.log(received_msg_value);
+        console.log(expectedPayout);
         assertEq(received_msg_value, expectedPayout);
     }
 
     function testNoClaimOnLose() public {
         uint16 winningNumber = getNextWinningNumber();
-        lottery.buy{value: 0.1 ether}(winningNumber + 1); vm.warp(block.timestamp + 24 hours);
+        lottery.buy{value: 0.1 ether}(winningNumber + 1); 
+        vm.warp(block.timestamp + 24 hours);
         lottery.draw();
         lottery.claim();
         assertEq(received_msg_value, 0);
@@ -105,7 +109,8 @@ contract LotteryTest is Test {
 
     function testNoDrawDuringClaimPhase() public {
         uint16 winningNumber = getNextWinningNumber();
-        lottery.buy{value: 0.1 ether}(winningNumber); vm.warp(block.timestamp + 24 hours);
+        lottery.buy{value: 0.1 ether}(winningNumber); 
+        vm.warp(block.timestamp + 24 hours);
         lottery.draw();
         lottery.claim();
         vm.expectRevert();
@@ -114,12 +119,14 @@ contract LotteryTest is Test {
 
     function testRollover() public {
         uint16 winningNumber = getNextWinningNumber();
-        lottery.buy{value: 0.1 ether}(winningNumber + 1); vm.warp(block.timestamp + 24 hours);
+        lottery.buy{value: 0.1 ether}(winningNumber + 1); 
+        vm.warp(block.timestamp + 24 hours);
         lottery.draw();
         lottery.claim();
 
         winningNumber = getNextWinningNumber();
-        lottery.buy{value: 0.1 ether}(winningNumber); vm.warp(block.timestamp + 24 hours);
+        lottery.buy{value: 0.1 ether}(winningNumber); 
+        vm.warp(block.timestamp + 24 hours);
         lottery.draw();
         lottery.claim();
         assertEq(received_msg_value, 0.2 ether);
