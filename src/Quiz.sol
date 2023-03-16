@@ -12,7 +12,7 @@ contract Quiz{
     
     mapping(address => uint256)[] public bets; // 베팅한 금액
     mapping(uint => Quiz_item) public quiz_list; // 퀴즈 저장
-    uint public vault_balance; // 금고에 있는 돈..?
+    uint public vault_balance; // 베팅한 금액
     address owner = msg.sender;
     string[] public answer_list; // 퀴즈 정답 저장
     bool isCorrect;
@@ -45,7 +45,7 @@ contract Quiz{
     }
 
     function getQuizNum() public view returns (uint){
-        uint num = quiz_list[answer_list.length].id;
+        uint num = quiz_list[answer_list.length].id; // 현재 quiz_list에 몇번째까지 퀴즈 들어있는지? -> 새롭게 생성될 퀴즈의 id값을 설정해주기 위해
         return num;
     }
     
@@ -58,9 +58,12 @@ contract Quiz{
 
     function solveQuiz(uint quizId, string memory ans) public returns (bool) {
         bool solve = keccak256(abi.encodePacked(answer_list[quizId-1])) == keccak256(abi.encodePacked(ans)) ? true : false; //answerlist에 저장되어 있는 답과 입력으로 받은 답이 일치하는지 확인
-        vault_balance = bets[quizId-1][msg.sender]; //베팅한 금액 저장
-        bets[quizId-1][msg.sender] = 0; //베팅한 금액은 초기화해줌
-        isCorrect = solve; //claim에서 solve 성공한 경우에만 돈 줘야 됨
+        // claim에서 문제를 맞춘 사람한테 베팅한 금액의 2배만큼 돈을 보내줘야되는데
+        // 문제를 맞췄을 수도 있고, 틀렸을 수도 있음 -> 어쨋든 이 문제를 푼 이후에는 베팅한 금액은 날라가야됨
+        // 베팅한 금액을 vault_balance에 저장해주고 bets에 있는 값은 날려주기
+        vault_balance = bets[quizId-1][msg.sender];
+        bets[quizId-1][msg.sender] = 0;
+        isCorrect = solve; //claim에 msg.sender가 문제를 맞췄는지 틀렸는지 알려줘야 됨
         return solve;
     }
 
@@ -68,7 +71,7 @@ contract Quiz{
         if (isCorrect == true){
             payable(msg.sender).call{value:vault_balance * 2}("");
         }
-        vault_balance = 0; //돈 보내줬으면 초기화
+        vault_balance = 0; //돈 보내줬으면 다음 게임을 위해 초기화 해줌
     }
     receive() external payable{}
 }
