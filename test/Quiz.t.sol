@@ -72,7 +72,7 @@ contract QuizTest is Test {
     function testMultiBet() public {
         quiz.betToPlay{value: q1.min_bet}(1);
         quiz.betToPlay{value: q1.min_bet}(1);
-        assertEq(quiz.bets(0, address(this)), q1.min_bet * 2);
+        assertEq(quiz.bets(0, address(this)), q1.min_bet * 2); // 이 address의 ~rk q1의 min_bet의 2배와 일치하는지
     }
 
     function testSolve1() public {
@@ -94,6 +94,7 @@ contract QuizTest is Test {
         quiz.betToPlay{value: q1.min_bet}(1);
         quiz.solveQuiz(1, quiz.getAnswer(1));
         uint256 prev_balance = address(this).balance;
+        console.log(address(this).balance);
         quiz.claim();
         uint256 balance = address(this).balance;
         assertEq(balance - prev_balance, q1.min_bet * 2);
