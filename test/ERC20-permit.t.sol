@@ -108,6 +108,7 @@ contract DreamTokenTest2 is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(alicePK, digest);
 
         drm.permit(alice, address(this), 10 ether, 1 days, v, r, s);
+        console.log(drm.nonces(address(alice)));
         vm.expectRevert("INVALID_SIGNER");
         drm.permit(alice, address(this), 10 ether, 1 days, v, r, s);
     }
