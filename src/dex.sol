@@ -29,25 +29,31 @@ contract Dex is ERC20 {
         uint256 outputAmount;
 
         // tokenXAmount가 user한테 y를 받아서 x를 주는 것
-        if(tokenXAmount == 0){      
+        if(tokenXAmount < 0){      
             // xy = (x-dx)(y+dy) -> dx = (x * dx) / (y + dx)
             // 선행 수수료
-            outputAmount = _amountX * (tokenXAmount * 999 / 1000) / _amountY + (tokenXAmount * 999 / 1000);
+            outputAmount = _amountX * (tokenYAmount * 999 / 1000) / _amountY + (tokenYAmount * 999 / 1000);
             
             // 최소값 검증
             require(outputAmount >= tokenMinimumOutputAmount, "less than Minimum");
 
+            _amountX -= outputAmount;
+            _amountY += tokenYAmount;
+
             // 보내기
-            _tokenX.transferFrom(msg.sender, address(this), outputAmount);
+            _tokenX.transferFrom(msg.sender, address(this), tokenYAmount);
             _tokenY.transfer(msg.sender, outputAmount);
 
-        } else if(tokenYAmount == 0){       // tokenYAmount가 0이니까 user한테 X받아서 y주는 것
+        } else if(tokenYAmount < 0){       // tokenYAmount가 0이니까 user한테 X받아서 y주는 것
             // xy = (x-dx)(y+dy) -> dy = (y * dx) / (x + dx)
-            outputAmount = _amountY * (tokenYAmount * 999 / 1000) / _amountX + (tokenYAmount * 999 / 1000);
+            outputAmount = _amountY * (tokenXAmount * 999 / 1000) / _amountX + (tokenXAmount * 999 / 1000);
 
             require(outputAmount >= tokenMinimumOutputAmount, "less than Minimum");
 
-            _tokenY.transferFrom(msg.sender, address(this), outputAmount);
+            _amountY -= outputAmount;
+            _amountX += tokenXAmount;
+
+            _tokenY.transferFrom(msg.sender, address(this), tokenXAmount);
             _tokenX.transfer(msg.sender, outputAmount);
         } else {
             revert();
