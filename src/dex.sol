@@ -6,9 +6,9 @@ import "../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 contract Dex is ERC20 {
     ERC20 public _tokenX;
     ERC20 public _tokenY;
-    uint _amountX;
-    uint _amountY;
-    uint _amountLPT;
+    mapping(address => uint256) _amountX;
+    mapping(address => uint256) _amountY;
+    mapping(address => uint256) _amountLPT;
 
     constructor(address tokenX, address tokenY) ERC20("LPT", "LPT") {
         _tokenX = ERC20(tokenX);
@@ -95,14 +95,13 @@ contract Dex is ERC20 {
         require(reward >= minimumLPTokenAmount, "less than minimum");
         // 만족하는 경우 msg.sender한테 LPT 토큰 발행해줌
         _mint(msg.sender, reward);
-        // 전체 발행된 _amountLPT 값을 업뎃해줌
         _amountLPT += reward;
 
         // msg.sender가 공급해준만큼 amountX(Y)를 추가해줌
         _amountX += tokenXAmount;
         _amountY += tokenYAmount;
 
-        //
+        //transferFrom으로 msg.sender의 토큰을 DEX로 가져옴
         _tokenX.transferFrom(msg.sender, address(this), tokenXAmount);
         _tokenY.transferFrom(msg.sender, address(this), tokenYAmount);
 
@@ -113,6 +112,15 @@ contract Dex is ERC20 {
     //더 많은 토큰을 회수할 수 있는 취약점이 없어야 합니다.
     function removeLiquidity(uint256 LPTokenAmount, uint256 minimumTokenXAmount, uint256 minimumTokenYAmount) public returns (uint, uint) {
         require(LPTokenAmount > 0, "more LPTokenAmount");
+        uint fee;
+        
+        uint256 _returnX;
+        uint256 _returnY;
+
+
+
+        require(minimumTokenXAmount>= _returnX, "less than minimum");
+        require(minimumTokenYAmount>= _returnY, "less than minimun");
         
     }
 
