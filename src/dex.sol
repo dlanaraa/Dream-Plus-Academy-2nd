@@ -26,7 +26,6 @@ contract Dex is ERC20 {
     function swap(uint256 tokenXAmount, uint256 tokenYAmount, uint256 tokenMinimumOutputAmount) external returns (uint256 outputAmount){
         //둘 중 하나는 무조건 0이어야 함
         require(tokenXAmount == 0 || tokenYAmount == 0, "must have 0 amount token");
-        require(_amountX >= 0 && _amountY >= 0, "can't swap");
 
         uint256 outputAmount;
 
