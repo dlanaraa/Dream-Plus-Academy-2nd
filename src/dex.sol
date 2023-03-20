@@ -4,15 +4,15 @@ pragma solidity ^0.8.0;
 import "../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 
 contract Dex is ERC20 {
-    ERC20 public _tokenX;
-    ERC20 public _tokenY;
-    uint256 poolX;
-    uint256 poolY;
+    ERC20 public tokenX;
+    ERC20 public tokenY;
+    uint256 tokenXpool;
+    uint256 tokenYpool;
     mapping(address => uint256) _amountLPT;
 
-    constructor(address tokenX, address tokenY) ERC20("LPT", "LPT") {
-        _tokenX = ERC20(tokenX);
-        _tokenY = ERC20(tokenY);        
+    constructor(address _tokenX, address _tokenY) ERC20("LPT", "LPT") {
+        tokenX = ERC20(_tokenX);
+        tokenY = ERC20(_tokenY);        
     }
 
     /*
@@ -33,30 +33,30 @@ contract Dex is ERC20 {
         if(tokenXAmount <= 0){      
             // xy = (x-dx)(y+dy) -> dx = (x * dx) / (y + dx)
             // 선행 수수료
-            outputAmount = (poolX * (tokenYAmount * 999 / 1000)) / (poolY + (tokenYAmount * 999 / 1000));
+            outputAmount = (tokenXpool * (tokenYAmount * 999 / 1000)) / (tokenYpool + (tokenYAmount * 999 / 1000));
             
             // 최소값 검증
             require(outputAmount >= tokenMinimumOutputAmount, "less than Minimum");
 
-            // output만큼 빼주고 받아오만큼 더해주기
-            poolX -= outputAmount;
-            poolY += tokenYAmount;
+            // output만큼 빼주고 받아온만큼 더해주기
+            tokenXpool -= outputAmount;
+            tokenYpool += tokenYAmount;
 
             // 보내기
-            _tokenX.transferFrom(msg.sender, address(this), tokenYAmount);
-            _tokenY.transfer(msg.sender, outputAmount);
+            tokenX.transferFrom(msg.sender, address(this), tokenYAmount);
+            tokenY.transfer(msg.sender, outputAmount);
 
         } else {   // tokenYAmount가 0이니까 user한테 X받아서 y주는 것
             // xy = (x-dx)(y+dy) -> dy = (y * dx) / (x + dx)
-            outputAmount = (poolY * (tokenXAmount * 999 / 1000)) / (poolX + (tokenXAmount * 999 / 1000));
+            outputAmount = (tokenYpool * (tokenXAmount * 999 / 1000)) / (tokenXpool + (tokenXAmount * 999 / 1000));
 
             require(outputAmount >= tokenMinimumOutputAmount, "less than Minimum");
 
-            poolY -= outputAmount;
-            poolX += tokenXAmount;
+            tokenYpool -= outputAmount;
+            tokenXpool += tokenXAmount;
 
-            _tokenY.transferFrom(msg.sender, address(this), tokenXAmount);
-            _tokenX.transfer(msg.sender, outputAmount);
+            tokenY.transferFrom(msg.sender, address(this), tokenXAmount);
+            tokenX.transfer(msg.sender, outputAmount);
         }
 
         return outputAmount;
@@ -71,11 +71,11 @@ contract Dex is ERC20 {
         require(tokenXAmount > 0, "tokenXAmount is 0");
         require(tokenYAmount > 0, "tokenYAmount is 0");
         // msg.sender가 dex한테 tokenX와 tokenB에 대한 권한을 줘야함 -> pool에 공급하는 양 만큼!
-        require(_tokenX.allowance(msg.sender, address(this)) >= tokenXAmount, "ERC20: insufficient allowance");
-        require(_tokenY.allowance(msg.sender, address(this)) >= tokenYAmount, "ERC20: insufficient allowance");
+        require(tokenX.allowance(msg.sender, address(this)) >= tokenXAmount, "ERC20: insufficient allowance");
+        require(tokenY.allowance(msg.sender, address(this)) >= tokenYAmount, "ERC20: insufficient allowance");
         // msg.sender의 token 보유량이 공급하려는 양보다 많아야 함
-        require(_tokenX.balanceOf(msg.sender) >= tokenXAmount, "ERC20: transfer amount exceeds balance");
-        require(_tokenY.balanceOf(msg.sender) >= tokenYAmount, "ERC20: transfer amount exceeds balance");
+        require(tokenX.balanceOf(msg.sender) >= tokenXAmount, "ERC20: transfer amount exceeds balance");
+        require(tokenY.balanceOf(msg.sender) >= tokenYAmount, "ERC20: transfer amount exceeds balance");
 
         // 유동성을 공급한 msg.sender한테 줄 보상 -> LPT
         uint reward;
@@ -83,7 +83,7 @@ contract Dex is ERC20 {
         // 같은 양을 넣더라도 넣는 시점의 상황(수수료 등등)을 고려해서 reward를 해줘야 함 -> totalSupply 값을 이용해서 LPT 계산
         if (totalSupply() != 0) 
         {
-            reward = tokenXAmount * totalSupply() / poolX;
+            reward = tokenXAmount * totalSupply() / tokenXpool;
         } 
         else if (totalSupply() != 0) 
         {
@@ -97,12 +97,12 @@ contract Dex is ERC20 {
         _amountLPT[msg.sender] += reward;
 
         // msg.sender가 공급해준만큼 amountX(Y)를 추가해줌
-        poolX += tokenXAmount;
-        poolY += tokenYAmount;
+        tokenXpool += tokenXAmount;
+        tokenYpool += tokenYAmount;
 
         //transferFrom으로 msg.sender의 토큰을 DEX로 가져옴
-        _tokenX.transferFrom(msg.sender, address(this), tokenXAmount);
-        _tokenY.transferFrom(msg.sender, address(this), tokenYAmount);
+        tokenX.transferFrom(msg.sender, address(this), tokenXAmount);
+        tokenY.transferFrom(msg.sender, address(this), tokenYAmount);
 
         return reward;
     }
@@ -123,24 +123,28 @@ contract Dex is ERC20 {
         uint256 _returnX;
         uint256 _returnY;
 
-        //remove할 때 수식 이해하는 중
+        //return = msg.sender가 갖고 있는 토큰 양 * 갖고 있는 LP 양 / total
+        _returnX = tokenX.balanceOf(msg.sender) * LPTokenAmount / totalSupply();
+        _returnY = tokenY.balanceOf(msg.sender) * LPTokenAmount / totalSupply();
 
 
         require(minimumTokenXAmount>= _returnX, "less than minimum");
         require(minimumTokenYAmount>= _returnY, "less than minimun");
 
-        _tokenX.transfer(msg.sender, _returnX);
-        _tokenY.transfer(msg.sender, _returnY);
-
         _burn(msg.sender, LPTokenAmount);
+
+
+        tokenXpool -= _returnX;
+        tokenYpool += _returnY;
+
+        tokenX.transfer(msg.sender, _returnX);
+        tokenY.transfer(msg.sender, _returnY);
 
         return (_returnX, _returnY);
         
     }
 
     function transfer(address to, uint256 lpAmount) public override returns (bool){
-        _transfer(msg.sender, to, lpAmount);
-        return true;
     }
 
     receive() external payable{}
