@@ -29,7 +29,8 @@ contract Dex is ERC20 {
         uint256 outputAmount;
 
         
-        if(tokenXAmount == 0){      // tokenXAmount가 user한테 y를 받아서 x를 주는 것
+        // tokenXAmount가 user한테 y를 받아서 x를 주는 것
+        if(tokenXAmount == 0){      
             // xy = (x-dx)(y+dy) -> dx = (x * dx) / (y + dx)
             // 선행 수수료
             outputAmount = _amountX * (tokenXAmount * 999 / 1000) / _amountY + (tokenXAmount * 999 / 1000);
@@ -63,18 +64,22 @@ contract Dex is ERC20 {
     }
 
     //addLiquidity, removeLiquidity
-    //ERC-20 기반 LP 토큰을 사용해야 합니다.
-    //수수료 수입과 Pool에 기부된 금액을 제외하고는
-    //더 많은 토큰을 회수할 수 있는 취약점이 없어야 합니다. 
+    //ERC-20 기반 LP 토큰을 사용해야 합니다. 
     function addLiquidity(uint256 tokenXAmount, uint256 tokenYAmount, uint256 minimumLPTokenAmount) external returns (uint256 LPTokenAmount){
+        // 0개 공급은 안됨
         require(tokenXAmount > 0, "tokenXAmount is 0");
         require(tokenYAmount > 0, "tokenYAmount is 0");
+        // msg.sender가 dex한테 tokenX와 tokenB에 대한 권한을 줘야함 -> pool에 공급하는 양 만큼!
         require(_tokenX.allowance(msg.sender, address(this)) >= tokenXAmount, "ERC20: insufficient allowance");
         require(_tokenY.allowance(msg.sender, address(this)) >= tokenYAmount, "ERC20: insufficient allowance");
+        // msg.sender의 token 보유량이 공급하려는 양보다 많아야 함
         require(_tokenX.balanceOf(msg.sender) >= tokenXAmount, "ERC20: transfer amount exceeds balance");
         require(_tokenY.balanceOf(msg.sender) >= tokenYAmount, "ERC20: transfer amount exceeds balance");
+
+        // 유동성을 공급한 msg.sender한테 줄 보상
         uint reward;
 
+        // totalSupply가 0이면 else if문의 연산이 안되니까 따로 설정해줌
         if (totalSupply() == 0) 
         {
             reward = tokenXAmount * tokenYAmount;
@@ -86,19 +91,29 @@ contract Dex is ERC20 {
             reward = tokenXAmount * totalSupply() / _amountX;
         }
         
+        // 인자로 받은 LP토큰 최소값보다 작으면 revert
         require(reward >= minimumLPTokenAmount, "less than minimum");
+        // 만족하는 경우 msg.sender한테 LPT 토큰 발행해줌
         _mint(msg.sender, reward);
+        // 전체 발행된 _amountLPT 값을 업뎃해줌
         _amountLPT += reward;
 
+        // msg.sender가 공급해준만큼 amountX(Y)를 추가해줌
         _amountX += tokenXAmount;
         _amountY += tokenYAmount;
+
+        //
         _tokenX.transferFrom(msg.sender, address(this), tokenXAmount);
         _tokenY.transferFrom(msg.sender, address(this), tokenYAmount);
 
         return reward;
     }
 
+    //수수료 수입과 Pool에 기부된 금액을 제외하고는
+    //더 많은 토큰을 회수할 수 있는 취약점이 없어야 합니다.
     function removeLiquidity(uint256 LPTokenAmount, uint256 minimumTokenXAmount, uint256 minimumTokenYAmount) public returns (uint, uint) {
+        require(LPTokenAmount > 0, "more LPTokenAmount");
+        
     }
 
     function transfer(address to, uint256 lpAmount) public override returns (bool){
