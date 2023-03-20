@@ -29,7 +29,7 @@ contract Dex is ERC20 {
         uint256 outputAmount;
 
         // tokenXAmount가 user한테 y를 받아서 x를 주는 것
-        if(tokenXAmount < 0){      
+        if(tokenXAmount <= 0){      
             // xy = (x-dx)(y+dy) -> dx = (x * dx) / (y + dx)
             // 선행 수수료
             outputAmount = (_amountX * (tokenYAmount * 999 / 1000)) / (_amountY + (tokenYAmount * 999 / 1000));
