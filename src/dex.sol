@@ -6,8 +6,8 @@ import "../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 contract Dex is ERC20 {
     ERC20 public _tokenX;
     ERC20 public _tokenY;
-    uint256 _amountX;
-    uint256 _amountY;
+    uint256 poolX;
+    uint256 poolY;
     mapping(address => uint256) _amountLPT;
 
     constructor(address tokenX, address tokenY) ERC20("LPT", "LPT") {
@@ -33,14 +33,14 @@ contract Dex is ERC20 {
         if(tokenXAmount <= 0){      
             // xy = (x-dx)(y+dy) -> dx = (x * dx) / (y + dx)
             // 선행 수수료
-            outputAmount = (_amountX * (tokenYAmount * 999 / 1000)) / (_amountY + (tokenYAmount * 999 / 1000));
+            outputAmount = (poolX * (tokenYAmount * 999 / 1000)) / (poolY + (tokenYAmount * 999 / 1000));
             
             // 최소값 검증
             require(outputAmount >= tokenMinimumOutputAmount, "less than Minimum");
 
             // output만큼 빼주고 받아오만큼 더해주기
-            _amountX -= outputAmount;
-            _amountY += tokenYAmount;
+            poolX -= outputAmount;
+            poolY += tokenYAmount;
 
             // 보내기
             _tokenX.transferFrom(msg.sender, address(this), tokenYAmount);
@@ -48,12 +48,12 @@ contract Dex is ERC20 {
 
         } else {   // tokenYAmount가 0이니까 user한테 X받아서 y주는 것
             // xy = (x-dx)(y+dy) -> dy = (y * dx) / (x + dx)
-            outputAmount = (_amountY * (tokenXAmount * 999 / 1000)) / (_amountX + (tokenXAmount * 999 / 1000));
+            outputAmount = (poolY * (tokenXAmount * 999 / 1000)) / (poolX + (tokenXAmount * 999 / 1000));
 
             require(outputAmount >= tokenMinimumOutputAmount, "less than Minimum");
 
-            _amountY -= outputAmount;
-            _amountX += tokenXAmount;
+            poolY -= outputAmount;
+            poolX += tokenXAmount;
 
             _tokenY.transferFrom(msg.sender, address(this), tokenXAmount);
             _tokenX.transfer(msg.sender, outputAmount);
@@ -77,29 +77,28 @@ contract Dex is ERC20 {
         require(_tokenX.balanceOf(msg.sender) >= tokenXAmount, "ERC20: transfer amount exceeds balance");
         require(_tokenY.balanceOf(msg.sender) >= tokenYAmount, "ERC20: transfer amount exceeds balance");
 
-        // 유동성을 공급한 msg.sender한테 줄 보상
+        // 유동성을 공급한 msg.sender한테 줄 보상 -> LPT
         uint reward;
 
-        // totalSupply가 0이면 else if문의 연산이 안되니까 따로 설정해줌
-        if (totalSupply() == 0) 
-        {
-            reward = tokenXAmount * tokenYAmount;
-        } 
         // 같은 양을 넣더라도 넣는 시점의 상황(수수료 등등)을 고려해서 reward를 해줘야 함 -> totalSupply 값을 이용해서 LPT 계산
+        if (totalSupply() != 0) 
+        {
+            reward = tokenXAmount * totalSupply() / poolX;
+        } 
         else if (totalSupply() != 0) 
         {
-            reward = tokenXAmount * totalSupply() / _amountX;
+            reward = tokenXAmount * tokenYAmount;
         }
         
-        // 인자로 받은 LP토큰 최소값보다 작으면 revert
+        // 인자로 받은 LP토큰 최소값보다 작으면 안됨
         require(reward >= minimumLPTokenAmount, "less than minimum");
         // 만족하는 경우 msg.sender한테 LPT 토큰 발행해줌
         _mint(msg.sender, reward);
         _amountLPT[msg.sender] += reward;
 
         // msg.sender가 공급해준만큼 amountX(Y)를 추가해줌
-        _amountX += tokenXAmount;
-        _amountY += tokenYAmount;
+        poolX += tokenXAmount;
+        poolY += tokenYAmount;
 
         //transferFrom으로 msg.sender의 토큰을 DEX로 가져옴
         _tokenX.transferFrom(msg.sender, address(this), tokenXAmount);
