@@ -15,12 +15,14 @@ contract Dex is ERC20 {
         _tokenY = ERC20(tokenY);        
     }
 
-    //Swap
-    //Pool 생성 시 지정된 두 종류의 토큰을 서로 교환할 수 있어야 합니다.
-    //Input 토큰과 Input 수량, 최소 Output 요구량을 받아서 Output 토큰으로 바꿔주고
-    //최소 요구량에 미달할 경우 revert 해야합니다. 수수료는 0.1%로 하세요
-    //tokenXAmount / tokenYAmount 중 하나는 무조건 0이어야 합니다.
-    //수량이 0인 토큰으로 스왑됨
+    /*
+    * Swap
+    * Pool 생성 시 지정된 두 종류의 토큰을 서로 교환할 수 있어야 합니다.
+    * Input 토큰과 Input 수량, 최소 Output 요구량을 받아서 Output 토큰으로 바꿔주고
+    * 최소 요구량에 미달할 경우 revert 해야합니다. 수수료는 0.1%로 하세요
+    * tokenXAmount / tokenYAmount 중 하나는 무조건 0이어야 합니다.
+    * 수량이 0인 토큰으로 스왑됨
+    */
     function swap(uint256 tokenXAmount, uint256 tokenYAmount, uint256 tokenMinimumOutputAmount) external returns (uint256 outputAmount){
         //둘 중 하나는 무조건 0이어야 함
         require(tokenXAmount == 0 || tokenYAmount == 0, "must have 0 amount token");
@@ -37,6 +39,7 @@ contract Dex is ERC20 {
             // 최소값 검증
             require(outputAmount >= tokenMinimumOutputAmount, "less than Minimum");
 
+            // output만큼 빼주고 받아오만큼 더해주기
             _amountX -= outputAmount;
             _amountY += tokenYAmount;
 
@@ -60,8 +63,10 @@ contract Dex is ERC20 {
         return outputAmount;
     }
 
-    //addLiquidity, removeLiquidity
-    //ERC-20 기반 LP 토큰을 사용해야 합니다. 
+    /*
+    * addLiquidit
+    * ERC-20 기반 LP 토큰을 사용해야 합니다. 
+    */ 
     function addLiquidity(uint256 tokenXAmount, uint256 tokenYAmount, uint256 minimumLPTokenAmount) external returns (uint256 LPTokenAmount){
         // 0개 공급은 안됨
         require(tokenXAmount > 0, "tokenXAmount is 0");
@@ -81,8 +86,7 @@ contract Dex is ERC20 {
         {
             reward = tokenXAmount * tokenYAmount;
         } 
-        // 같은 양을 넣더라도 넣는 시점의 상황을 고려해서 reward를 해줘야 함 -> totalSupply 값을 이용해서 LPT 계산
-        // 수수료나 뭐 .. 그런 ?
+        // 같은 양을 넣더라도 넣는 시점의 상황(수수료 등등)을 고려해서 reward를 해줘야 함 -> totalSupply 값을 이용해서 LPT 계산
         else if (totalSupply() != 0) 
         {
             reward = tokenXAmount * totalSupply() / _amountX;
@@ -105,8 +109,13 @@ contract Dex is ERC20 {
         return reward;
     }
 
-    //수수료 수입과 Pool에 기부된 금액을 제외하고는
-    //더 많은 토큰을 회수할 수 있는 취약점이 없어야 합니다.
+
+    /*
+    * removeLiquidity
+    * ERC-20 기반 LP 토큰을 사용해야 합니다. 
+    * 수수료 수입과 Pool에 기부된 금액을 제외하고는    
+    * 더 많은 토큰을 회수할 수 있는 취약점이 없어야 합니다.
+    */
     function removeLiquidity(uint256 LPTokenAmount, uint256 minimumTokenXAmount, uint256 minimumTokenYAmount) public returns (uint, uint) {
         require(LPTokenAmount > 0, "less LPToken");
         require(_amountLPT[msg.sender] >= LPTokenAmount, "less LPToken");
