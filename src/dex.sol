@@ -135,7 +135,7 @@ contract Dex is ERC20 {
 
 
         tokenXpool -= _returnX;
-        tokenYpool += _returnY;
+        tokenYpool -= _returnY;
 
         tokenX.transfer(msg.sender, _returnX);
         tokenY.transfer(msg.sender, _returnY);
@@ -145,6 +145,8 @@ contract Dex is ERC20 {
     }
 
     function transfer(address to, uint256 lpAmount) public override returns (bool){
+        _transfer(msg.sender, to, lpAmount);
+        return true;
     }
 
     receive() external payable{}
