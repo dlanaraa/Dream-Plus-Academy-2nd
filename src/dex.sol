@@ -6,8 +6,8 @@ import "../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 contract Dex is ERC20 {
     ERC20 public _tokenX;
     ERC20 public _tokenY;
-    mapping(address => uint256) _amountX;
-    mapping(address => uint256) _amountY;
+    uint256 _amountX;
+    uint256 _amountY;
     mapping(address => uint256) _amountLPT;
 
     constructor(address tokenX, address tokenY) ERC20("LPT", "LPT") {
@@ -95,7 +95,7 @@ contract Dex is ERC20 {
         require(reward >= minimumLPTokenAmount, "less than minimum");
         // 만족하는 경우 msg.sender한테 LPT 토큰 발행해줌
         _mint(msg.sender, reward);
-        _amountLPT += reward;
+        _amountLPT[msg.sender] += reward;
 
         // msg.sender가 공급해준만큼 amountX(Y)를 추가해줌
         _amountX += tokenXAmount;
