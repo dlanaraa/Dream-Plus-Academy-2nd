@@ -111,16 +111,26 @@ contract Dex is ERC20 {
     //수수료 수입과 Pool에 기부된 금액을 제외하고는
     //더 많은 토큰을 회수할 수 있는 취약점이 없어야 합니다.
     function removeLiquidity(uint256 LPTokenAmount, uint256 minimumTokenXAmount, uint256 minimumTokenYAmount) public returns (uint, uint) {
-        require(LPTokenAmount > 0, "more LPTokenAmount");
+        require(LPTokenAmount > 0, "less LPToken");
+        require(_amountLPT[msg.sender] >= LPTokenAmount, "less LPToken");
+        
         uint fee;
         
         uint256 _returnX;
         uint256 _returnY;
 
+        //remove할 때 수식 이해하는 중
 
 
         require(minimumTokenXAmount>= _returnX, "less than minimum");
         require(minimumTokenYAmount>= _returnY, "less than minimun");
+
+        _tokenX.transfer(msg.sender, _returnX);
+        _tokenY.transfer(msg.sender, _returnY);
+
+        _burn(msg.sender, LPTokenAmount);
+
+        return (_returnX, _returnY);
         
     }
 
