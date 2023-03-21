@@ -103,6 +103,8 @@ contract DexTest is Test {
         emit log_named_uint("secondLPReturn", secondLPReturn);
 
         (uint tx, uint ty) = dex.removeLiquidity(secondLPReturn, 0, 0);
+        console.log(tx);
+        console.log(ty);
         assertEq(tx, 1000 ether * 2, "RemoveLiquiidty tx error");
         assertEq(ty, 1000 ether * 2, "RemoveLiquiidty tx error");
     }
