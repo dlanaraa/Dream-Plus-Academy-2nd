@@ -116,22 +116,22 @@ if(tokenXAmount > 0){
 
 </br>
 
-## 06. 유동성 회수 과정에서 LP Token 관련 기능 부재
-### 6.1 해당 코드
+## 05. 유동성 회수 과정에서 LP Token 관련 기능 부재
+### 5.1 해당 코드
 - hangi-dreamer/Dex_solidity/src/Dex.sol/removeLiquidity()
 - jw-dream/Dex_solidity/Dex.sol/removeLiquidity()
 
-### 6.2 설명
+### 5.2 설명
 - removeLiquidity 함수는 addLiquidity에서 공급한 유동성을 다시 회수하는 함수로, 유동성을 공급한 대가로 받은 lpToken을 반납(회수)하고, 공급한 토큰을 다시 돌려받는 기능이 구현되어 있어야 함
 - 하지만 해당 코드에는 LPToken 회수, LPToken 소각, 토큰(X, Y) 전송 등의 과정이 부재함
 +) removeLiquidity() line156에서 rx에 대한 최소값 검증을 두번 진행하고 있으며, ry에 대한 최소값 검증은 진행되지 않음 (오타 같음 ..)
 
-### 6.3 파급력
+### 5.3 파급력
 - 본인이 생각하는 심각도 : Critical
 - DEX의 유동성을 회수할 때 구현되어야 하는 주요 기능들이 부재
 - burn을 해주지 않을 경우 유동성을 회수하더라도 totalSupply 값이 변화되지 않고, 이는 removeLiquidity에서 반환해줄 토큰의 양을 산정할 때 사용되는 요소이기 때문에 제대로 된 가격 산정을 하지 못하게 될 가능성이 있다. 또한, DEX 사용자는 유동성을 공급은 했는데 이걸 다시 회수할 수 없게 된다. 
 
-### 6.4 해결 방안
+### 5.4 해결 방안
 - rx, ry 값을 transfer함수를 이용해서 msg.sender에게 보내준다 -> IERC20(_tokenX).transfer(msg.sender, rx); IERC20(_tokenY).transfer(msg.sender, ry);
 - msg.sender에게 회수한 LP Token 소각 -> burn(msg.sender, LPTokenAmount)
 - 최소값 검증 -> require(ry >= minimumTokenYAmount);
@@ -140,9 +140,9 @@ if(tokenXAmount > 0){
 
 </br>
 
-## 07. transfer visibility
+## 06. transfer visibility
 
-### 7.1 해당 코드
+### 6.1 해당 코드
 <pre>
 <code>
 function transfer(address to, uint256 lpAmount) override public returns (bool){
@@ -156,14 +156,14 @@ function transfer(address to, uint256 lpAmount) override public returns (bool){
 - jt-dream/Dex_solidity/src/Dex.sol/transfer()
 - koor00t/DEX_solidity.src/Dex.sol/transfer()
 
-### 7.2 설명
+### 6.2 설명
 - transfer 함수에서 mint를 해주고 있는데 transfer가 public으로 되어 있어서 그냥 아무나 다 transfer를 호출하고, LP Token을 mint할 수 있음
 
-### 7.3 파급력
+### 6.3 파급력
 - 본인이 생각하는 심각도 : Ciritical
 - 8.2에 작성했듯이, 해당 함수를 호출하는 사람은 누구나 LP Token을 minting할 수 있기 때문에 심각도가 높다고 생각함
 
-### 7.4 해결방안
+### 6.4 해결방안
 - transfer를 호출하는 사람이 DEX일 때만 mint해주도록 require문 추가
  -> require(msg.sender == address(this, "~");
 
