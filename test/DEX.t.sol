@@ -32,10 +32,10 @@ contract DexTest is Test {
 
     function testAddLiquidity1() external {
         uint firstLPReturn = dex.addLiquidity(1000 ether, 1000 ether, 0);
-        emit log_named_uint("firstLPReturn", firstLPReturn);
+        // emit log_named_uint("firstLPReturn", firstLPReturn);
 
         uint secondLPReturn = dex.addLiquidity(1000 ether, 1000 ether, 0);
-        emit log_named_uint("secondLPReturn", secondLPReturn);
+        // emit log_named_uint("secondLPReturn", secondLPReturn);
 
         assertEq(firstLPReturn, secondLPReturn, "AddLiquidity Error 1");
     }

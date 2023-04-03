@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "../lib/forge-std/src/Test.sol";
+import "../lib/forge-std/src/console.sol";
 import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-contracts/contracts/utils/math/Math.sol";
 import "openzeppelin-contracts/contracts/utils/math/SafeMath.sol";
@@ -61,6 +63,13 @@ contract Dex is ERC20 {
                 amountX = tokenXAmount;
                 amountY = _quote(tokenXAmount, reserveX, reserveY);
                 LPTokenAmount  = Math.min((amountX * totalSupply()/reserveX), (amountY * totalSupply()/reserveY));
+                /* 어차피 비율 맞춰줬으니까 amountX로 계산한거나 amountY로 계산한 값이 같지 않을까?
+                    LPAmountX = amountX * totalSupply() / reserveX;
+                    LPAmountY = amountY * totalSupply() / reserveY;
+                    Logs:
+                        LPAmountX 1000000000000000000000
+                        LPAmountY 1000000000000000000000
+                */
             } else if (tokenXAmount >= _quote(tokenYAmount, reserveY, reserveX)) {
                 amountX = _quote(tokenYAmount, reserveY, reserveX);
                 amountY = tokenYAmount;
