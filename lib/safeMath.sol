@@ -12,7 +12,7 @@ library SafeMath {
         require((z = x - y) <= x, 'ds-math-sub-underflow');
     }
 
-    function mul(uint x, uint y) internal pure returns (uint z) {
+    function mul(uint x, uint y) public pure returns (uint z) {
         require(y == 0 || (z = x * y) / y == x, 'ds-math-mul-overflow');
     }
 
@@ -28,5 +28,11 @@ library SafeMath {
             z = 1;
         }
         // else z = 0 (default value)
+    }
+
+    function quote(uint amountA, uint reserveA, uint reserveB) internal pure returns (uint amountB) {
+        require(amountA > 0, 'UniswapV2Library: INSUFFICIENT_AMOUNT');
+        require(reserveA > 0 && reserveB > 0, 'UniswapV2Library: INSUFFICIENT_LIQUIDITY');
+        amountB = amountA.mul(reserveB) / reserveA;
     }
 }

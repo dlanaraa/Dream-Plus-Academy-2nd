@@ -1,133 +1,98 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
+import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
+import "openzeppelin-contracts/contracts/utils/math/Math.sol";
+import "openzeppelin-contracts/contracts/utils/math/SafeMath.sol";
 
 contract Dex is ERC20 {
     ERC20 public tokenX;
     ERC20 public tokenY;
-    uint256 tokenXpool;
-    uint256 tokenYpool;
-    uint256 _amountLPT;
 
     constructor(address _tokenX, address _tokenY) ERC20("LPT", "LPT") {
         tokenX = ERC20(_tokenX);
         tokenY = ERC20(_tokenY);        
     }
 
-    /*
-    * Swap
-    * Pool 생성 시 지정된 두 종류의 토큰을 서로 교환할 수 있어야 합니다.
-    * Input 토큰과 Input 수량, 최소 Output 요구량을 받아서 Output 토큰으로 바꿔주고
-    * 최소 요구량에 미달할 경우 revert 해야합니다. 수수료는 0.1%로 하세요
-    * tokenXAmount / tokenYAmount 중 하나는 무조건 0이어야 합니다.
-    * 수량이 0인 토큰으로 스왑됨
-    */
-    function swap(uint256 tokenXAmount, uint256 tokenYAmount, uint256 tokenMinimumOutputAmount) external returns (uint256 outputAmount){
-        //둘 중 하나는 무조건 0이어야 함
-        require(tokenXAmount == 0 || tokenYAmount == 0, "must have 0 amount token");
-        require(tokenXpool > 0 && tokenYpool > 0, "can't swap");
+    function swap(uint256 tokenXAmount, uint256 tokenYAmount, uint256 tokenMinimumOutputAmount) external returns (uint256 outputAmount){        
+        (uint reserveX, uint reserveY) = update();
 
-        update();
+        require(tokenXAmount == 0 || tokenYAmount == 0, "");
+        require(reserveX > 0 && reserveY > 0, "");
 
-        /* tokenXAmount가 0
-        * 사용자 기준 : y를 주고 x를 받아오는 것
-        * dex 기준 : y를 받고 x를 돌려주는 것
-        * xy = (x-dx)(y+dy) -> dx = (x * dy) / (y + dy)
-        */
-        if(tokenXAmount == 0) {      
-            // 선행 수수료
-            outputAmount = (tokenXpool * (tokenYAmount * 999 / 1000)) / (tokenYpool + (tokenYAmount * 999 / 1000));
+        if(tokenXAmount == 0) {  // Y를 X로 스왑
+            outputAmount = (reserveX * (tokenYAmount * 999 / 1000)) / (reserveY + (tokenYAmount * 999 / 1000));
             
-            // 최소값 검증
-            require(outputAmount >= tokenMinimumOutputAmount, "less than Minimum");
+            require(outputAmount >= tokenMinimumOutputAmount, "");
 
-            // output만큼 빼주고 받아온만큼 더해주기
-            tokenXpool -= outputAmount;
-            tokenYpool += tokenYAmount;
-
-            // 보내기
             tokenY.transferFrom(msg.sender, address(this), tokenYAmount);
             tokenX.transfer(msg.sender, outputAmount);
         } 
-        /* tokenXAmount가 0이 아니면? -> tokenYAmount가 0일 것
-        * 사용자 기준 : x를 주고 y를 받아오는 것
-        * dex 기준 : x를 받고 y를 돌려주는 것
-        * xy = (x+dx)(y-dy) -> (y * dx) / (x + dx)
-        */
-        else {
-            outputAmount = (tokenYpool * (tokenXAmount * 999 / 1000)) / (tokenXpool + (tokenXAmount * 999 / 1000));
+        else {  // X를 Y로 스왑
+            outputAmount = (reserveY * (tokenXAmount * 999 / 1000)) / (reserveX + (tokenXAmount * 999 / 1000));
 
-            require(outputAmount >= tokenMinimumOutputAmount, "less than Minimum");
-
-            tokenYpool -= outputAmount;
-            tokenXpool += tokenXAmount;
+            require(outputAmount >= tokenMinimumOutputAmount, "");
 
             tokenX.transferFrom(msg.sender, address(this), tokenXAmount);
             tokenY.transfer(msg.sender, outputAmount);
         }
+
+        update();
 }
 
-    /*
-    * addLiquidit
-    * ERC-20 기반 LP 토큰을 사용해야 합니다. 
-    */ 
     function addLiquidity(uint256 tokenXAmount, uint256 tokenYAmount, uint256 minimumLPTokenAmount) external returns (uint256 LPTokenAmount){
-        // 0개 공급은 안됨
-        require(tokenXAmount > 0, "tokenXAmount is 0");
-        require(tokenYAmount > 0, "tokenYAmount is 0");
-        // msg.sender가 dex한테 tokenX와 tokenB에 대한 권한을 줘야함 -> pool에 공급하는 양 만큼!
+        require(tokenXAmount > 0, "AddLiquidity : tokenXAmount");
+        require(tokenYAmount > 0, "AddLiquidity : tokenYAmount");
         require(tokenX.allowance(msg.sender, address(this)) >= tokenXAmount, "ERC20: insufficient allowance");
         require(tokenY.allowance(msg.sender, address(this)) >= tokenYAmount, "ERC20: insufficient allowance");
-        // msg.sender의 token 보유량이 공급하려는 양보다 많아야 함
         require(tokenX.balanceOf(msg.sender) >= tokenXAmount, "ERC20: transfer amount exceeds balance");
         require(tokenY.balanceOf(msg.sender) >= tokenYAmount, "ERC20: transfer amount exceeds balance");
 
-        update();
+        (uint256 reserveX, uint256 reserveY) = update();
 
-        // 같은 양을 넣더라도 넣는 시점의 상황(수수료 등등)을 고려해서 reward를 해줘야 함 -> totalSupply 값을 이용해서 LPT 계산
-        if (totalSupply() == 0) {
-            LPTokenAmount = tokenXAmount * tokenYAmount;
-        } else {
-            LPTokenAmount = tokenXAmount * totalSupply() / tokenXpool;
+        uint256 amountX;
+        uint256 amountY;
+
+        // DEX pool이 비어있을 때
+        if (totalSupply() == 0){
+            LPTokenAmount = Math.sqrt(tokenXAmount * tokenYAmount);
+        } else{ // 비율에 맞게 들어왔는지 확인
+            if (tokenYAmount >= _quote(tokenXAmount, reserveX, reserveY)){
+                amountX = tokenXAmount;
+                amountY = _quote(tokenXAmount, reserveX, reserveY);
+                LPTokenAmount  = Math.min((amountX * totalSupply()/reserveX), (amountY * totalSupply()/reserveY));
+            } else if (tokenXAmount >= _quote(tokenYAmount, reserveY, reserveX)) {
+                amountX = _quote(tokenYAmount, reserveY, reserveX);
+                amountY = tokenYAmount;
+                LPTokenAmount  = Math.min((amountX * totalSupply()/reserveX), (amountY * totalSupply()/reserveY));
+            } else {
+                revert("AddLiquidity : INSUFFICIENT AMOUNT");
+            }
         }
 
-        // 인자로 받은 LP토큰 최소값보다 작으면 안됨
-        require(LPTokenAmount >= minimumLPTokenAmount, "less than minimum");
-        // 만족하는 경우 msg.sender한테 LPT 토큰 발행해줌
+        require(minimumLPTokenAmount <= LPTokenAmount, "AddLiquidity : minimum LP return error");
         _mint(msg.sender, LPTokenAmount);
 
-        // msg.sender가 공급해준만큼 amountX(Y)를 추가해줌
-        tokenXpool += tokenXAmount;
-        tokenYpool += tokenYAmount;
-
-        //transferFrom으로 msg.sender의 토큰을 DEX로 가져옴
         tokenX.transferFrom(msg.sender, address(this), tokenXAmount);
         tokenY.transferFrom(msg.sender, address(this), tokenYAmount);
-    }
-
-
-    /*
-    * removeLiquidity
-    * ERC-20 기반 LP 토큰을 사용해야 합니다. 
-    * 수수료 수입과 Pool에 기부된 금액을 제외하고는    
-    * 더 많은 토큰을 회수할 수 있는 취약점이 없어야 합니다.
-    */
-    function removeLiquidity(uint256 LPTokenAmount, uint256 minimumTokenXAmount, uint256 minimumTokenYAmount) public returns (uint _receiveX, uint _receiveY) {        
-        // require(LPTokenAmount > 0, "less LPToken");
-        // require(balanceOf(msg.sender) >= LPTokenAmount, "less LPToken");
 
         update();
+    }
 
-        //return = pool에 있는 토큰 양 * 갖고 있는 LP 양 / total LP 양
-        _receiveX = tokenXpool * LPTokenAmount / totalSupply();
-        _receiveY = tokenYpool * LPTokenAmount / totalSupply();
+    function removeLiquidity(uint256 LPTokenAmount, uint256 minimumTokenXAmount, uint256 minimumTokenYAmount) public returns (uint _receiveX, uint _receiveY) {        
+        require(LPTokenAmount > 0, "");
+        require(balanceOf(msg.sender) >= LPTokenAmount, "");
 
-        require(minimumTokenXAmount<= _receiveX, "less than minimum");
-        require(minimumTokenYAmount<= _receiveY, "less than minimun");
+        (uint reserveX, uint reserveY) = update();
 
-        tokenXpool -= _receiveX;
-        tokenYpool -= _receiveY;
+        _receiveX = reserveX * LPTokenAmount / totalSupply();
+        _receiveY = reserveY * LPTokenAmount / totalSupply();
+
+        require(minimumTokenXAmount<= _receiveX, "");
+        require(minimumTokenYAmount<= _receiveY, "");
+
+        reserveX -= _receiveX;
+        reserveY -= _receiveY;
 
         _burn(msg.sender, LPTokenAmount);
 
@@ -138,9 +103,14 @@ contract Dex is ERC20 {
     function transfer(address to, uint256 lpAmount) public override returns (bool){
     }
 
-    function update() public {
-        tokenXpool = tokenX.balanceOf(address(this));
-        tokenYpool = tokenY.balanceOf(address(this));
+    function update() public returns (uint reserveX, uint reserveY){
+        reserveX = tokenX.balanceOf(address(this));
+        reserveY = tokenY.balanceOf(address(this));
+    }
+
+    function _quote(uint256 amount, uint256 reserve1, uint256 reserve2) public returns (uint256 reserve){
+        require(reserve1 > 0 && reserve2 > 0, "zero pool");
+        reserve = amount * reserve2 / reserve1;    
     }
 
     receive() external payable{}
