@@ -114,6 +114,8 @@ contract Dex is ERC20 {
         require(allowance(msg.sender, address(this)) >= lpAmount, "transfer : insufficient allowance");
 
         (bool result) = transfer(to, lpAmount);
+        
+        return result;
     }
 
     function update() public returns (uint reserveX, uint reserveY){
