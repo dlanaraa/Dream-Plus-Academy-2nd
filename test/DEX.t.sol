@@ -20,9 +20,19 @@ contract DexTest is Test {
     ERC20 tokenX;
     ERC20 tokenY;
 
+    address user1;
+    address user2;
+
     function setUp() public {
         tokenX = new CustomERC20("XXX");
         tokenY = new CustomERC20("YYY");
+
+        user1 = address(0x1337);
+        user2 = address(0x1337 + 1);
+        tokenX.transfer(user1, 5000 ether);
+        tokenY.transfer(user1, 5000 ether);
+        tokenX.transfer(user2, 5000 ether);
+        tokenY.transfer(user2, 5000 ether);
 
         dex = new Dex(address(tokenX), address(tokenY));
 
@@ -252,5 +262,33 @@ contract DexTest is Test {
         (uint rx, uint ry) = dex.removeLiquidity(lp, 0, 0);
         assertEq(rx, 5000 ether, "rx failed");
         assertEq(ry, 4000 ether, "ry failed");
+    }
+
+    function testTransfer() external {
+        vm.startPrank(user1);
+        {
+            tokenX.approve(address(dex), type(uint).max);
+            tokenY.approve(address(dex), type(uint).max);
+            uint LPReturn = dex.addLiquidity(1000 ether, 1000 ether, 0);
+            console.log("before user1", dex.balanceOf(user1));
+        }
+        vm.stopPrank();
+        vm.startPrank(user2);
+        {
+            console.log("before user2", dex.balanceOf(user2));
+        }
+        vm.stopPrank();
+        vm.startPrank(user1);
+        {
+            dex.approve(address(dex), type(uint).max);
+            dex._transfer(user2, 700000000000000000000);
+            console.log("after user1", dex.balanceOf(user1));
+        }
+        vm.stopPrank();
+        vm.startPrank(user2);
+        {
+            console.log("after user2", dex.balanceOf(user2));
+        }
+        vm.stopPrank();
     }
 }

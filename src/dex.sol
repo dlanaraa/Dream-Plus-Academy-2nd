@@ -3,9 +3,9 @@ pragma solidity ^0.8.0;
 
 import "../lib/forge-std/src/Test.sol";
 import "../lib/forge-std/src/console.sol";
-import "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
-import "openzeppelin-contracts/contracts/utils/math/Math.sol";
-import "openzeppelin-contracts/contracts/utils/math/SafeMath.sol";
+import "../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
+import "../lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
+import "../lib/openzeppelin-contracts/contracts/utils/math/SafeMath.sol";
 
 contract Dex is ERC20 {
     ERC20 public tokenX;
@@ -19,8 +19,8 @@ contract Dex is ERC20 {
     function swap(uint256 tokenXAmount, uint256 tokenYAmount, uint256 tokenMinimumOutputAmount) external returns (uint256 outputAmount){        
         (uint reserveX, uint reserveY) = update();
 
-        require(tokenXAmount == 0 || tokenYAmount == 0, "");
-        require(reserveX > 0 && reserveY > 0, "");
+        require(tokenXAmount == 0 || tokenYAmount == 0, "swap: one of them must zero");
+        require(reserveX > 0 && reserveY > 0, "swap: insufficient amount");
 
         if(tokenXAmount == 0) {  // Y를 X로 스왑
             outputAmount = (reserveX * (tokenYAmount * 999 / 1000)) / (reserveY + (tokenYAmount * 999 / 1000));
@@ -43,8 +43,8 @@ contract Dex is ERC20 {
 }
 
     function addLiquidity(uint256 tokenXAmount, uint256 tokenYAmount, uint256 minimumLPTokenAmount) external returns (uint256 LPTokenAmount){
-        require(tokenXAmount > 0, "AddLiquidity : tokenXAmount");
-        require(tokenYAmount > 0, "AddLiquidity : tokenYAmount");
+        require(tokenXAmount > 0, "addLiquidity: insufficient amount");
+        require(tokenYAmount > 0, "addLiquidity: insufficient amount");
         require(tokenX.allowance(msg.sender, address(this)) >= tokenXAmount, "ERC20: insufficient allowance");
         require(tokenY.allowance(msg.sender, address(this)) >= tokenYAmount, "ERC20: insufficient allowance");
         require(tokenX.balanceOf(msg.sender) >= tokenXAmount, "ERC20: transfer amount exceeds balance");
@@ -75,11 +75,11 @@ contract Dex is ERC20 {
                 amountY = tokenYAmount;
                 LPTokenAmount  = Math.min((amountX * totalSupply()/reserveX), (amountY * totalSupply()/reserveY));
             } else {
-                revert("AddLiquidity : INSUFFICIENT AMOUNT");
+                revert("addLiquidity : insufficient amount");
             }
         }
 
-        require(minimumLPTokenAmount <= LPTokenAmount, "AddLiquidity : minimum LP return error");
+        require(minimumLPTokenAmount <= LPTokenAmount, "addLiquidity : minimum check");
         _mint(msg.sender, LPTokenAmount);
 
         tokenX.transferFrom(msg.sender, address(this), tokenXAmount);
@@ -89,27 +89,31 @@ contract Dex is ERC20 {
     }
 
     function removeLiquidity(uint256 LPTokenAmount, uint256 minimumTokenXAmount, uint256 minimumTokenYAmount) public returns (uint _receiveX, uint _receiveY) {        
-        require(LPTokenAmount > 0, "");
-        require(balanceOf(msg.sender) >= LPTokenAmount, "");
+        require(LPTokenAmount > 0, "removeLiquidity : insufficient amount");
+        require(balanceOf(msg.sender) >= LPTokenAmount, "removeLiquidity : insufficient amount");
 
         (uint reserveX, uint reserveY) = update();
 
         _receiveX = reserveX * LPTokenAmount / totalSupply();
         _receiveY = reserveY * LPTokenAmount / totalSupply();
 
-        require(minimumTokenXAmount<= _receiveX, "");
-        require(minimumTokenYAmount<= _receiveY, "");
-
-        reserveX -= _receiveX;
-        reserveY -= _receiveY;
+        require(minimumTokenXAmount<= _receiveX, "removeLiquidity : minimum check");
+        require(minimumTokenYAmount<= _receiveY, "removeLiquidity : minimum check");
 
         _burn(msg.sender, LPTokenAmount);
 
         tokenX.transfer(msg.sender, _receiveX);
         tokenY.transfer(msg.sender, _receiveY);
+
+        update();
     }
 
-    function transfer(address to, uint256 lpAmount) public override returns (bool){
+    function _transfer(address to, uint256 lpAmount) public returns (bool){
+        require(lpAmount > 0, "transfer : insufficient amount");
+        require(balanceOf(msg.sender) >= lpAmount, "transfer : insufficient amount");
+        require(allowance(msg.sender, address(this)) >= lpAmount, "transfer : insufficient allowance");
+
+        (bool result) = transfer(to, lpAmount);
     }
 
     function update() public returns (uint reserveX, uint reserveY){
@@ -118,7 +122,7 @@ contract Dex is ERC20 {
     }
 
     function _quote(uint256 amount, uint256 reserve1, uint256 reserve2) public returns (uint256 reserve){
-        require(reserve1 > 0 && reserve2 > 0, "zero pool");
+        require(reserve1 > 0 && reserve2 > 0, "addLiquidity : insufficient amount");
         reserve = amount * reserve2 / reserve1;    
     }
 
