@@ -106,14 +106,12 @@ contract Dex is ERC20 {
         update();
     }
 
-    function _transfer(address to, uint256 lpAmount) public returns (bool){
+    function _transfer(address to, uint256 lpAmount) public returns (bool result){
         require(lpAmount > 0, "transfer : insufficient amount");
         require(balanceOf(msg.sender) >= lpAmount, "transfer : insufficient amount");
         require(allowance(msg.sender, address(this)) >= lpAmount, "transfer : insufficient allowance");
 
-        (bool result) = transfer(to, lpAmount);
-        
-        return result;
+        result = transfer(to, lpAmount);
     }
 
     function update() public returns (uint reserveX, uint reserveY){
