@@ -455,9 +455,7 @@
         y^2 = x^3 + ax + b
         $$        
 - secp256k1
-    - 비트코인과 이더리움에서는 a = 0, b = 7을 사용
-    - ![Untitled](https://file.notion.so/f/s/04bb69f7-8dbb-446f-ba79-85bdf2bd089f/Untitled.png?id=634ea807-224c-48e8-9064-09baa6244a7b&table=block&spaceId=e22d3740-ccb0-45be-94fb-71b2a782635c&expirationTimestamp=1693396800000&signature=7g_wtvJMCS94C8Lsa8RowCcME6AylbePteaDO_2HP0U&downloadName=Untitled.png)
-        
+    - 비트코인과 이더리움에서는 a = 0, b = 7을 사용        
 
         $$
         y^2 = x^3 + 7
