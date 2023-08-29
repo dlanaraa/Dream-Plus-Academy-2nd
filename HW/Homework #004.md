@@ -14,6 +14,8 @@
     - 테스트 코드 및 CI 관련 내용은 수정하지 마세요.
 - 자세한 내용은 강의 슬라이드 참고 (06. Smart Contract 개발 실습)
 
+<br>
+
 ## Task 03. [Web3OJ](https://app.web3oj.com/) 문제 풀기
 
 <details>
