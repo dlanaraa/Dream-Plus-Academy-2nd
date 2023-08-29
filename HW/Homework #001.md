@@ -626,7 +626,6 @@ Reference : [블록체인 코어 시리즈: 작업증명(PoW)](https://medium.co
     - Tornado Cash
 <br>
 
-
 ### Layer1 vs. Layer2
 ![Untitled](https://static.upbitcare.com/5a6772e3-313f-4dba-9b0a-c6ac885272cb.png)
 
@@ -656,7 +655,6 @@ Reference : [블록체인 코어 시리즈: 작업증명(PoW)](https://medium.co
     - 유저가 실제로 사용하는 DApp
     - ex : 유니스왑, 메이커다오 등
 <br>
-
 
 ## 레퍼런스
 - [Blockchain - Wikipedia](https://en.wikipedia.org/wiki/Blockchain)
